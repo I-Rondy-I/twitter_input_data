@@ -1,0 +1,16 @@
+services:
+  pyqt-app:
+    build: .
+    container_name: pyqt6_app
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    environment:
+      - DISPLAY=${DISPLAY}
+    networks:
+      - pyqt-net
+    command: python main.py
+
+networks:
+  pyqt-net:
+    driver: bridge
+

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=TID
+Comment=Run TID
+Exec=/home/rondy/Desktop/twitter_input_data/tid.sh
+Icon=utilities-terminal
+Terminal=true
+Type=Application
+
