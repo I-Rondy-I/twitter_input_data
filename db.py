@@ -45,7 +45,7 @@ def select_from_db_view_data():
             tpd.name, 
             tpd.text, 
             ARRAY_AGG(DISTINCT media.media_name) AS media_files,
-            tpd.is_link, 
+            tpd.is_random, 
             ARRAY_AGG(DISTINCT wd.day_name) AS week_days, 
             ARRAY_AGG(DISTINCT tt.time) AS tweet_times
         FROM 
@@ -61,7 +61,7 @@ def select_from_db_view_data():
         LEFT JOIN 
             {TABLE_NAME_TT} tt ON tpd_tt.tt_id = tt.id
         GROUP BY 
-            tpd.id, tpd.name, tpd.text, tpd.is_link;
+            tpd.id, tpd.name, tpd.text, tpd.is_random;
         """
         cursor.execute(select_sql)
         results = cursor.fetchall()
@@ -121,9 +121,10 @@ def select_from_db_stats():
 
         # SQL query to join stats with tweet_post_data and select the desired fields
         select_sql = """
-        SELECT s.id, tpd.name, s.tweet_time
+        SELECT s.id, tpd.name, s.date, s.time, wd.day_name, s.status
         FROM public.stats s
         JOIN public.tweet_post_data tpd ON s.tpd_id = tpd.id
+        JOIN public.week_days as wd tpd ON s.wd_id = wd.id
         """
         cursor.execute(select_sql)
         results = cursor.fetchall()
@@ -139,7 +140,7 @@ def select_from_db_stats():
 
     return results
 
-def insert_into_db_tpd(name, text, is_link):
+def insert_into_db_tpd(name, text, is_random):
     connection = None
     cursor = None
     tpd_id = None
@@ -150,12 +151,12 @@ def insert_into_db_tpd(name, text, is_link):
 
         # Insert data into TPD table and return the generated ID
         insert_sql = """
-        INSERT INTO {table_name} (name, text, is_link)
+        INSERT INTO {table_name} (name, text, is_random)
         VALUES (%s, %s, %s) RETURNING id
         """
         insert_query = sql.SQL(insert_sql).format(table_name=sql.Identifier(TABLE_NAME_TPD))
 
-        cursor.execute(insert_query, (name, text, is_link))
+        cursor.execute(insert_query, (name, text, is_random))
         tpd_id = cursor.fetchone()[0]  # Fetch the generated id
         connection.commit()
 
@@ -338,9 +339,9 @@ def insert_into_db_tpd_tt(tpd_id, tweet_times):
         if connection:
             connection.close()
 
-def save_complete_tpd(name, text, is_link, media_files, week_days, tweet_times):
+def save_complete_tpd(name, text, is_random, media_files, week_days, tweet_times):
     # Insert into TPD table and get the generated ID
-    tpd_id = insert_into_db_tpd(name, text, is_link)
+    tpd_id = insert_into_db_tpd(name, text, is_random)
     
     if tpd_id:
         # Insert related data into other tables

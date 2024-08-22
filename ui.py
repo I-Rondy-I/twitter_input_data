@@ -60,8 +60,8 @@ class MainWindow(QMainWindow):
         self.media_list_widget = QListWidget()
         self.form_layout.addRow("Selected Files:", self.media_list_widget)
 
-        self.is_link_check = QCheckBox("Is Link")
-        self.form_layout.addRow("Is Link:", self.is_link_check)
+        self.is_random_check = QCheckBox("Is Random")
+        self.form_layout.addRow("Is Random:", self.is_random_check)
 
         self.week_days_layout = QHBoxLayout()
         self.form_layout.addRow("Week Days:", self.week_days_layout)
@@ -123,7 +123,7 @@ class MainWindow(QMainWindow):
         
         self.data_table = QTableWidget()
         self.data_table.setColumnCount(7)
-        self.data_table.setHorizontalHeaderLabels(["ID", "Name", "Text", "Media", "Is Link", "Week Days", "Tweet Times"])
+        self.data_table.setHorizontalHeaderLabels(["ID", "Name", "Text", "Media", "Is Random", "Week Days", "Tweet Times"])
         self.data_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
         # Set column widths
@@ -176,8 +176,8 @@ class MainWindow(QMainWindow):
         self.stats_tab_layout = QVBoxLayout(self.stats_tab)
         
         self.stats_table = QTableWidget()
-        self.stats_table.setColumnCount(3)
-        self.stats_table.setHorizontalHeaderLabels(["ID", "Name", "Tweet Time"])
+        self.stats_table.setColumnCount(6)
+        self.stats_table.setHorizontalHeaderLabels(["ID", "Name", "Date", "Time", "Week day", "Status"])
 
         # Set header styles
         header = self.stats_table.horizontalHeader()
@@ -249,16 +249,16 @@ class MainWindow(QMainWindow):
         name = self.name_input.text()
         text = self.text_input.toPlainText()
         media_files = getattr(self, 'media_files', [])
-        is_link = self.is_link_check.isChecked()
+        is_random = self.is_random_check.isChecked()
 
         week_days = [day for day, checkbox in self.week_day_checkboxes.items() if checkbox.isChecked()]
         tweet_times = self.tweet_times
 
         # Here, you would normally save to the database, but for now, we'll just print.
-        print(f"Submitting:\nName: {name}\nText: {text}\nMedia: {media_files}\nIs Link: {is_link}\nWeek Days: {week_days}\nTweet Times: {tweet_times}")
+        print(f"Submitting:\nName: {name}\nText: {text}\nMedia: {media_files}\nIs Random: {is_random}\nWeek Days: {week_days}\nTweet Times: {tweet_times}")
 
         # Save to database
-        err_code = save_complete_tpd(name, text, is_link, media_files, week_days, tweet_times)
+        err_code = save_complete_tpd(name, text, is_random, media_files, week_days, tweet_times)
 
         # Update status label based on result
         if err_code == 0:
@@ -274,7 +274,7 @@ class MainWindow(QMainWindow):
         # Clear all fields
         self.name_input.clear()
         self.text_input.clear()
-        self.is_link_check.setChecked(False)
+        self.is_random_check.setChecked(False)
 
         self.media_files = []
         self.media_list_widget.clear()
@@ -336,7 +336,7 @@ class MainWindow(QMainWindow):
     
         self.stats_table.setRowCount(0)  # Clear existing rows
 
-        # Assuming data is a list of tuples: (id, name, tweet_time)
+        # Assuming data is a list of tuples: (id, name, date, time, day_week, status)
         for row_data in data:
             row_position = self.stats_table.rowCount()
             self.stats_table.insertRow(row_position)
