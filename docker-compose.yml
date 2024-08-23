@@ -4,8 +4,10 @@ services:
     container_name: pyqt6_app
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
+      - /etc/localtime:/etc/localtime:ro
     environment:
       - DISPLAY=${DISPLAY}
+      - PYTHONUNBUFFERED=1
     networks:
       - pyqt-net
     command: python main.py

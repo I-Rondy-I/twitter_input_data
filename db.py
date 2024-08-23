@@ -2,6 +2,10 @@ import psycopg2
 from psycopg2 import sql
 from dotenv import load_dotenv
 import os
+import psycopg2.extras
+from datetime import datetime, time
+import pytz
+from tzlocal import get_localzone
 
 # Load environment variables from .env file
 load_dotenv()
@@ -36,7 +40,8 @@ def select_from_db_view_data():
 
     try:
         connection = get_connection()
-        cursor = connection.cursor()
+        # Użycie DictCursor, aby fetchall() zwróciło listę słowników
+        cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
         # SQL query to join tables and select the desired fields
         select_sql = f"""
@@ -65,6 +70,10 @@ def select_from_db_view_data():
         """
         cursor.execute(select_sql)
         results = cursor.fetchall()
+        
+        for record in results:
+            record['tweet_times'] = times_utc_to_local(record['tweet_times'])
+
         return results
 
     except Exception as error:
@@ -76,6 +85,20 @@ def select_from_db_view_data():
             cursor.close()
         if connection:
             connection.close()
+
+def times_local_to_utc(local_times_list):
+    utc_times_list = []
+    for local_time_str in local_times_list:
+        utc_time_str = time_local_to_utc(local_time_str)
+        utc_times_list.append(utc_time_str)
+    return utc_times_list
+    
+def times_utc_to_local(utc_times_list):
+    local_times_list = []
+    for utc_time_str in utc_times_list:
+        local_time_str = time_utc_to_local(utc_time_str)
+        local_times_list.append(local_time_str)
+    return local_times_list
 
 def delete_record_from_db(item_id):
     connection = None
@@ -117,17 +140,21 @@ def select_from_db_stats():
 
     try:
         connection = get_connection()
-        cursor = connection.cursor()
+        # Użycie DictCursor, aby fetchall() zwróciło listę słowników
+        cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
         # SQL query to join stats with tweet_post_data and select the desired fields
         select_sql = """
         SELECT s.id, tpd.name, s.date, s.time, wd.day_name, s.status
         FROM public.stats s
         JOIN public.tweet_post_data tpd ON s.tpd_id = tpd.id
-        JOIN public.week_days as wd tpd ON s.wd_id = wd.id
+        JOIN public.week_days wd ON s.wd_id = wd.id
         """
         cursor.execute(select_sql)
         results = cursor.fetchall()
+
+        for record in results:
+            record['time'] = times_utc_to_local(record['time'])
 
     except Exception as error:
         print(f"Error retrieving data from database: {error}")
@@ -272,6 +299,46 @@ def insert_into_db_tpd_wd(tpd_id, week_days):
         if connection:
             connection.close()
 
+def time_utc_to_local(utc_time_str):
+    if utc_time_str is None:
+        return None
+    if not isinstance(utc_time_str, str):
+        utc_time_str = utc_time_str.strftime('%H:%M:%S')
+
+    # Pobierz aktualną datę
+    current_date = datetime.now(pytz.utc).date()
+    
+    # Połącz datę i czas, aby uzyskać pełny obiekt datetime w UTC
+    utc_time = datetime.combine(current_date, time.fromisoformat(utc_time_str)).replace(tzinfo=pytz.utc)
+    
+    # Pobierz lokalną strefę czasową
+    local_tz = get_localzone()
+    
+    # Przekształć czas UTC na lokalny czas
+    local_time = utc_time.astimezone(local_tz)
+    
+    return local_time.strftime('%H:%M:%S')
+    
+def time_local_to_utc(local_time_str):
+    if local_time_str is None:
+        return None
+    if not isinstance(local_time_str, str):
+        local_time_str = local_time_str.strftime('%H:%M:%S')
+
+    # Pobierz aktualną datę
+    current_date = datetime.now().date()
+    
+    # Pobierz lokalną strefę czasową
+    local_tz = get_localzone()
+    
+    # Połącz datę i czas, aby uzyskać pełny obiekt datetime w lokalnej strefie czasowej
+    local_time = datetime.combine(current_date, time.fromisoformat(local_time_str)).replace(tzinfo=local_tz)
+    
+    # Przekształć lokalny czas na czas UTC
+    utc_time = local_time.astimezone(pytz.utc)
+    
+    return utc_time.strftime('%H:%M:%S')
+
 def get_tt_id(tweet_time):
     """Retrieve tweet_time ID based on the tweet time."""
     connection = None
@@ -289,6 +356,7 @@ def get_tt_id(tweet_time):
 
         # Convert 'HH:MM' to 'HH:MM:SS' format to match database format
         tweet_time_formatted = f"{tweet_time}:00"
+        tweet_time_formatted = time_local_to_utc(tweet_time_formatted)
         
         cursor.execute(select_query, (tweet_time_formatted,))
         result = cursor.fetchone()
@@ -322,6 +390,7 @@ def insert_into_db_tpd_tt(tpd_id, tweet_times):
         insert_query = sql.SQL(insert_sql).format(table_name=sql.Identifier(TABLE_NAME_TPD_TT))
 
         for time in tweet_times:
+            time = time_local_to_utc(time)
             tt_id = get_tt_id(time)
             if tt_id is not None:
                 cursor.execute(insert_query, (tpd_id, tt_id))
