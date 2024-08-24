@@ -390,7 +390,6 @@ def insert_into_db_tpd_tt(tpd_id, tweet_times):
         insert_query = sql.SQL(insert_sql).format(table_name=sql.Identifier(TABLE_NAME_TPD_TT))
 
         for time in tweet_times:
-            time = time_local_to_utc(time)
             tt_id = get_tt_id(time)
             if tt_id is not None:
                 cursor.execute(insert_query, (tpd_id, tt_id))
