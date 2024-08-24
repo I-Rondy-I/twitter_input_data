@@ -153,8 +153,8 @@ def select_from_db_stats():
         cursor.execute(select_sql)
         results = cursor.fetchall()
 
-        #for record in results:
-            #record['time'] = time_utc_to_local(record['time'])
+        for record in results:
+            record['time'] = time_utc_to_local(record['time'])
     except Exception as error:
         print(f"Error retrieving data from database: {error}")
 
